@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+import numpy as np
 
 app = Flask(__name__)
 
@@ -6,12 +7,12 @@ app = Flask(__name__)
 def hello_world():
     return "<p>Hello, World!</p>"
 
-@app.route("/get", methods=['GET'])
-def get():
+@app.route("/recommend", methods=['GET'])
+def recommend():
     if request.method == 'GET':
-        print(request.args.get('user_id'))
+        user_id = request.args.get('user_id')
         response = jsonify({
-            "book_ids": [1, 2, 3, 4, 5, 6, 7, 8, 9]
+            "book_ids": np.load('./recommend/{}.npy'.format(user_id)).tolist()
         })
         response.headers.add('Access-Control-Allow-Origin', '*')
         return response
