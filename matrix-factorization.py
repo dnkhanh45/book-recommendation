@@ -2,10 +2,7 @@ import pandas as pd
 import numpy as np
 from tqdm.auto import tqdm
 import os
-from matplotlib import pyplot as plt
-import json
-from collections import Counter
-import math
+import argparse
 tqdm.pandas()
 import torch
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -24,7 +21,9 @@ for i, bid in enumerate(book_ids):
 
 device = torch.device('cuda')
 
-dim = 100
+parser = argparse.ArgumentParser()
+parser.add_argument('dim', type=int)
+dim = parser.parse_args().dim
 user_w = torch.zeros(user_ids.shape[0], dim, requires_grad=True)
 user_b = torch.zeros(user_ids.shape[0], requires_grad=True)
 book_w = torch.zeros(book_ids.shape[0], dim, requires_grad=True)
@@ -34,18 +33,24 @@ seed = 3973
 torch.manual_seed(seed=seed)
 torch.nn.init.xavier_uniform_(user_w)
 torch.nn.init.xavier_uniform_(book_w)
+
 user_w = user_w.to(device)
 user_b = user_b.to(device)
 book_w = book_w.to(device)
 book_b = book_b.to(device)
 
 mu = train_df['rating'].mean()
-lambda_ = 0.1
+lambda_ = 0.01
 lr = 0.5
 
-for epoch in range(20):
+
+os.makedirs('./learn/matrix-factorization-{}'.format(dim), exist_ok=True)
+with open('./learn/matrix-factorization-{}/log.csv'.format(dim), 'w') as f:
+    f.write('train_mse,test_mse,train,test\n')
+
+for epoch in range(50):
     train_mse_loss = 0.0
-    for index in tqdm(range(train_df.shape[0]), desc='epoch {}'.format(epoch + 1)):
+    for index in tqdm(range(train_df.shape[0]), desc='train: dim={}, epoch={}'.format(dim, epoch + 1)):
         row = train_df.iloc[index]
         user_coo = uidd[row['user_id']]
         book_coo = bidd[row['book_id']]
@@ -77,7 +82,7 @@ for epoch in range(20):
         book_b.grad = None
 
         test_mse_loss = 0.0
-        for index in tqdm(range(test_df.shape[0]), desc='epoch {}'.format(epoch + 1)):
+        for index in tqdm(range(test_df.shape[0]), desc='test: dim={}, epoch={}'.format(dim, epoch + 1)):
             row = train_df.iloc[index]
             user_coo = uidd[row['user_id']]
             book_coo = bidd[row['book_id']]
@@ -93,16 +98,15 @@ for epoch in range(20):
             torch.pow(book_w, 2).sum() + \
             torch.pow(book_b, 2).sum()
         )
-    print(train_loss.item(), test_loss.item())
-    print(train_mse_loss.item(), test_mse_loss.item())
     user_w.requires_grad = True
     user_b.requires_grad = True
     book_w.requires_grad = True
     book_b.requires_grad = True
+    with open('./learn/matrix-factorization-{}/log.csv'.format(dim), 'a') as f:
+        f.write('{},{},{},{}\n'.format(train_mse_loss.item(), test_mse_loss.item(), train_loss.item(), test_loss.item()))
 
-os.makedirs('./learn/matrix-factorization', exist_ok=True)
-np.save('./learn/matrix-factorization/user_w.npy', user_w.detach().cpu().numpy())
-np.save('./learn/matrix-factorization/user_b.npy', user_b.detach().cpu().numpy())
-np.save('./learn/matrix-factorization/book_w.npy', book_w.detach().cpu().numpy())
-np.save('./learn/matrix-factorization/book_b.npy', book_b.detach().cpu().numpy())
+np.save('./learn/matrix-factorization-{}/user_w.npy'.format(dim), user_w.detach().cpu().numpy())
+np.save('./learn/matrix-factorization-{}/user_b.npy'.format(dim), user_b.detach().cpu().numpy())
+np.save('./learn/matrix-factorization-{}/book_w.npy'.format(dim), book_w.detach().cpu().numpy())
+np.save('./learn/matrix-factorization-{}/book_b.npy'.format(dim), book_b.detach().cpu().numpy())
     
