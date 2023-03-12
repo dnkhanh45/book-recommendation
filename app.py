@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 import numpy as np
 
 app = Flask(__name__)
+user_ids = np.load('./data/user_ids.npy')
 
 @app.route("/")
 def hello_world():
@@ -11,6 +12,7 @@ def hello_world():
 def matrix_factorization():
     if request.method == 'GET':
         user_id = request.args.get('user_id')
+        user_id = user_ids[user_id]
         response = jsonify({
             "book_ids": np.load('./recommend/matrix-factorization/{}.npy'.format(user_id)).tolist()
         })
@@ -21,6 +23,7 @@ def matrix_factorization():
 def content_based():
     if request.method == 'GET':
         user_id = request.args.get('user_id')
+        user_id = user_ids[user_id]
         response = jsonify({
             "book_ids": np.load('./recommend/content-based/{}.npy'.format(user_id)).tolist()
         })
